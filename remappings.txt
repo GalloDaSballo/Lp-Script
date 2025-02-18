@@ -1,0 +1,4 @@
+ds-test/=lib/ebtc-amm-comparer/lib/forge-std/lib/ds-test/src/
+ebtc-amm-comparer/=lib/ebtc-amm-comparer/src/
+forge-std/=lib/forge-std/src/
+openzeppelin-contracts/=lib/ebtc-amm-comparer/lib/openzeppelin-contracts/
