@@ -2,12 +2,12 @@
 pragma solidity ^0.8.13;
 
 import {Test, console} from "forge-std/Test.sol";
-import {Deployer} from "../src/Deployer.sol";
+import {Deployer, UniV3Translator} from "../src/Deployer.sol";
 
+import {IUniV3Factory, IV3NFTManager, IUnIV3Pool} from "../src/interfaces/IUni.sol";
 import {ERC20} from "../src/mocks/ERC20.sol";
 
 contract DeployerTest is Test {
-
     // Deploy and check that it actually works
     // 2 Tokens you deploy in Fork Test
     // You just run it
@@ -19,31 +19,64 @@ contract DeployerTest is Test {
         // tER20 x 2
         // Param stuff
         // Deploy and check
-        ERC20 token1 = new ERC20("0", "Token0");
-        ERC20 token2 = new ERC20("1", "Token1");
+        ERC20 tokenA = new ERC20("0", "Token0");
+        ERC20 tokenB = new ERC20("1", "Token1");
 
-        token1.mint(address(deployer), 1e18);
-        token2.mint(address(deployer), 1e18);
-
-
+        tokenA.mint(address(deployer), 1e18);
+        tokenB.mint(address(deployer), 1e18);
 
         // Send the tokens to the deployer
-        Deployer.ConstructorParams memory params = Deployer.ConstructorParams({
-            token: address(token1),
-            otherToken: address(token2),
-            amtOfOtherTokenToLP: 1e18,
-            amtToMint: 0,
-            amtToLP: 1e18, // We'll sweep the rest to address | amtOfOtherTokenToLP / amtToLP IS the Price we will use
-            sendLpTo: address(this),
+        Deployer.UniV3DeployParams memory params = Deployer.UniV3DeployParams({
+            tokenA: address(tokenA),
+            tokenB: address(tokenB),
+            amtA: 1e18,
+            amtB: 1e18,
+            sendLpTo: address(this), // We'll sweep the rest to address | amtOfOtherTokenToLP / amtToLP IS the Price we will use
             sweepTo: address(this),
-        
-            tickMultiplierA: int24(100), // How many ticks to LP around? 
-            tickMultiplierB: int24(100) // How many ticks to LP around? 
+            tickMultiplierA: int24(100), // How many ticks to LP around?
+            tickMultiplierB: int24(100) // How many ticks to LP around?
         });
 
-        deployer.initialize(params);
+        (address pool, uint256 tokenId) = deployer.deployAndProvideToUniV3(params);
 
-        
+        // TEST:
 
+        // Pool is deployed
+        // Pool is initialized
+        // Pool has expected price
+        assertTrue(address(deployer.translator()) != address(0), "Traslator was deployed");
+        assertTrue(pool.code.length > 0, "Pool has been deployed");
+        assertTrue(IUnIV3Pool(pool).slot0().sqrtPriceX96 != 0, "Pool is initialized");
+
+        int24 expectedMiddle;
+        {
+            UniV3Translator translator = deployer.translator();
+
+            uint160 expectedPrice = translator.getSqrtPriceX96GivenRatio(params.amtA, params.amtB);
+            expectedMiddle = translator.getTickAtSqrtRatio(expectedPrice);
+            assertEq(IUnIV3Pool(pool).slot0().sqrtPriceX96, expectedPrice, "Pool price is the intended one");
+        }
+
+        // We have the nft
+        {
+            assertEq(deployer.UNIV3_NFT_MANAGER().ownerOf(tokenId), params.sendLpTo, "We have an NFT for LPing");
+        }
+
+        // Stack too Deep
+        // {
+        //     (,, address token0, address token1,, int24 tickLower, int24 tickUpper,,,,,) =
+        //         deployer.UNIV3_NFT_MANAGER().positions(tokenId);
+
+        //     assertTrue(
+        //         token0 == (address(tokenA) > address(tokenB) ? address(tokenA) : address(tokenB)), "token0 matches"
+        //     );
+        //     assertTrue(
+        //         token1 == (address(tokenA) > address(tokenB) ? address(tokenB) : address(tokenA)), "token1 matches"
+        //     );
+
+        //     // Do some assertion on Ticks
+        //     assertLe(tickLower, expectedMiddle, "tick lower is less than middle");
+        //     assertGe(tickUpper, expectedMiddle, "tick upper is higher than middle");
+        // }
     }
 }
