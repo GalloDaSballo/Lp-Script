@@ -5,7 +5,7 @@ import {IUniV3Factory, IV3NFTManager, IUnIV3Pool} from "./interfaces/IUni.sol";
 import {UniV3Translator} from "ebtc-amm-comparer/UniV3Translator.sol";
 import {ERC20} from "./mocks/ERC20.sol";
 
-contract Deployer {
+contract LiquidityProvider {
     // Addresses for UniV3
     // Settings for LPing
     // Do the whole thing in the constructor
@@ -169,4 +169,7 @@ contract Deployer {
             return tokenId;
         }
     }
+
+
+    // TODO: Curve logic
 }

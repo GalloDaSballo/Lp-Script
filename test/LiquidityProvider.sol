@@ -2,20 +2,20 @@
 pragma solidity ^0.8.13;
 
 import {Test, console} from "forge-std/Test.sol";
-import {Deployer, UniV3Translator} from "../src/Deployer.sol";
+import {LiquidityProvider, UniV3Translator} from "../src/LiquidityProvider.sol";
 
 import {IUniV3Factory, IV3NFTManager, IUnIV3Pool} from "../src/interfaces/IUni.sol";
 import {ERC20} from "../src/mocks/ERC20.sol";
 
-contract DeployerTest is Test {
+contract LiquidityProviderTest is Test {
     // Deploy and check that it actually works
     // 2 Tokens you deploy in Fork Test
     // You just run it
     // Check that you get the intended result
-    Deployer deployer;
+    LiquidityProvider deployer;
 
     function test_deployAndCheck() public {
-        deployer = new Deployer();
+        deployer = new LiquidityProvider();
 
         // tER20 x 2
         // Param stuff
@@ -27,7 +27,7 @@ contract DeployerTest is Test {
         tokenB.mint(address(deployer), 1e18);
 
         // Send the tokens to the deployer
-        Deployer.UniV3DeployParams memory params = Deployer.UniV3DeployParams({
+        LiquidityProvider.UniV3DeployParams memory params = LiquidityProvider.UniV3DeployParams({
             tokenA: address(tokenA),
             tokenB: address(tokenB),
             amtA: 1e18,
