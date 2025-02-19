@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 import {IUniV3Factory, IV3NFTManager, IUnIV3Pool} from "./interfaces/IUni.sol";
 import {UniV3Translator} from "ebtc-amm-comparer/UniV3Translator.sol";
+import {ERC20} from "./mocks/ERC20.sol";
 
 contract Deployer {
     // Addresses for UniV3
@@ -25,6 +26,7 @@ contract Deployer {
     // NOTE / TODO: Prob need to add the rest of the above as params as well
 
     struct ConstructorParams {
+        address token;
         address otherToken;
         uint256 amtOfOtherTokenToLP;
         uint256 amtToMint;
@@ -36,7 +38,15 @@ contract Deployer {
         int24 tickMultiplierB; // How many ticks to LP around? 
     }
 
-    constructor(ConstructorParams memory params) {
+    constructor() {
+        // TODO: Do we need this?
+    }
+
+    bool initialized;
+    function initialize(ConstructorParams memory params) external {
+        require(!initialized);
+        initialized = true;
+
         // Input address factory, address NFT Manager
         // AMT to pass
         // Ticks delta to use (assumes middle)
@@ -45,16 +55,10 @@ contract Deployer {
         // Deploy translator | NOTE: Better SWE would make this a library, but hey, it's already built
         UniV3Translator translator = new UniV3Translator();
 
-        // Deploy the token here
-        address newToken = address(uint160(uint256(keccak256(abi.encodePacked("asdasda")))));
-
-
-
-        // TODO: Tokens, etc..
-        // TODO: Convert eveything down to params
+        // TODO: Add the deployment steps (or we can change this to pass bytecode, not that great though) Deploy the token here
+        address newToken = params.token; // TODO: You can alter the code to deploy here
 
         _createNewPoolAndSeed(translator, newToken, params.otherToken, params.amtToLP, params.amtOfOtherTokenToLP, params.tickMultiplierA, params.tickMultiplierB);
-
     }
 
     /// TODO: Params, Tokens, etc...
@@ -73,6 +77,12 @@ contract Deployer {
         // TODO: Tokens
         uint256 firstAmount = firstToken == tokenA ? amountA : amountB;
         uint256 secondAmount = secondToken == tokenA ? amountA : amountB;
+
+        // We LP via the NFT Manager
+        ERC20(firstToken).approve(address(UNIV3_NFT_MANAGER), firstAmount);
+        ERC20(secondToken).approve(address(UNIV3_NFT_MANAGER), secondAmount);
+
+
 
         uint160 priceAtRatio = translator.getSqrtRatioAtTick(0);
         IUnIV3Pool(newPool).initialize(priceAtRatio);
