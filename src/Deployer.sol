@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
-import {IUniV3Factory, IUniV3Router, IV3NFTManager, IUnIV3Pool} from "./interfaces/IUni.sol";
+import {IUniV3Factory, IV3NFTManager, IUnIV3Pool} from "./interfaces/IUni.sol";
 import {UniV3Translator} from "ebtc-amm-comparer/UniV3Translator.sol";
 
 contract Deployer {
-    // Addresses for UniV3 and Curve
+    // Addresses for UniV3
     // Settings for LPing
     // Do the whole thing in the constructor
 
@@ -13,9 +13,6 @@ contract Deployer {
     // Deploy new pool
     IUniV3Factory constant UNIV3_FACTORY = IUniV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
 
-    // Swap
-    IUniV3Router constant UNIV3_SWAP_ROUTER_2 = IUniV3Router(0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45);
-
     // Add liquidity
     IV3NFTManager constant UNIV3_NFT_MANAGER = IV3NFTManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
 
@@ -23,34 +20,60 @@ contract Deployer {
     int24 internal constant MAX_TICK = -MIN_TICK;
 
     int24 constant TICK_SPACING = 60; // Souce: Docs | TODO
-    int24 constant TICK_RANGE_MULTIPLIER = 200;
     uint24 constant DEFAULT_FEE = 3000;
 
-    constructor() {
+    // NOTE / TODO: Prob need to add the rest of the above as params as well
+
+    struct ConstructorParams {
+        address otherToken;
+        uint256 amtOfOtherTokenToLP;
+        uint256 amtToMint;
+        uint256 amtToLP; // We'll sweep the rest to address | amtOfOtherTokenToLP / amtToLP IS the Price we will use
+        address sendLpTo;
+        address sweepTo;
+        
+        int24 tickMultiplierA; // How many ticks to LP around? 
+        int24 tickMultiplierB; // How many ticks to LP around? 
+    }
+
+    constructor(ConstructorParams memory params) {
+        // Input address factory, address NFT Manager
+        // AMT to pass
+        // Ticks delta to use (assumes middle)
+        // Expected slot0?
+
         // Deploy translator | NOTE: Better SWE would make this a library, but hey, it's already built
         UniV3Translator translator = new UniV3Translator();
+
+        // Deploy the token here
+        address newToken = address(uint160(uint256(keccak256(abi.encodePacked("asdasda")))));
+
+
 
         // TODO: Tokens, etc..
         // TODO: Convert eveything down to params
 
+        _createNewPoolAndSeed(translator, newToken, params.otherToken, params.amtToLP, params.amtOfOtherTokenToLP, params.tickMultiplierA, params.tickMultiplierB);
+
     }
 
     /// TODO: Params, Tokens, etc...
-     function _createNewPoolAndSeed(UniV3Translator translator, uint256 amountA, uint256 amountB, int24 multipleTicksA, int24 multipleTicksB)
+     function _createNewPoolAndSeed(UniV3Translator translator, address tokenA, address tokenB, uint256 amountA, uint256 amountB, int24 multipleTicksA, int24 multipleTicksB)
         internal
         returns (address newPool)
     {
 
         // Create the Pool
-        newPool = UNIV3_FACTORY.createPool(firstToken, secondToken, DEFAULT_FEE);
-        firstToken = IUnIV3Pool(newPool).token0();
-        secondToken = IUnIV3Pool(newPool).token1();
+        newPool = UNIV3_FACTORY.createPool(tokenA, tokenB, DEFAULT_FEE);
+        
+        // TODO: Can do in place
+        address firstToken = IUnIV3Pool(newPool).token0();
+        address secondToken = IUnIV3Pool(newPool).token1();
 
         // TODO: Tokens
         uint256 firstAmount = firstToken == tokenA ? amountA : amountB;
         uint256 secondAmount = secondToken == tokenA ? amountA : amountB;
 
-        // TODO: Compute the sqrtRatioAtTick
         uint160 priceAtRatio = translator.getSqrtRatioAtTick(0);
         IUnIV3Pool(newPool).initialize(priceAtRatio);
 
@@ -65,10 +88,10 @@ contract Deployer {
                 multipleTicksA: multipleTicksA,
                 multipleTicksB: multipleTicksB
             });
-            _addLiquidity(addParams);
+            _addLiquidity(translator, addParams);
         }
 
-        return (newPool, address(firstToken), address(secondToken));
+        return (newPool);
     }
 
     struct AddLiquidityParams {
