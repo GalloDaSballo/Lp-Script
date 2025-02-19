@@ -12,9 +12,10 @@ contract DeployerTest is Test {
     // 2 Tokens you deploy in Fork Test
     // You just run it
     // Check that you get the intended result
+    Deployer deployer;
 
     function test_deployAndCheck() public {
-        Deployer deployer = new Deployer();
+        deployer = new Deployer();
 
         // tER20 x 2
         // Param stuff
@@ -48,35 +49,29 @@ contract DeployerTest is Test {
         assertTrue(pool.code.length > 0, "Pool has been deployed");
         assertTrue(IUnIV3Pool(pool).slot0().sqrtPriceX96 != 0, "Pool is initialized");
 
-        int24 expectedMiddle;
-        {
-            UniV3Translator translator = deployer.translator();
 
-            uint160 expectedPrice = translator.getSqrtPriceX96GivenRatio(params.amtA, params.amtB);
-            expectedMiddle = translator.getTickAtSqrtRatio(expectedPrice);
-            assertEq(IUnIV3Pool(pool).slot0().sqrtPriceX96, expectedPrice, "Pool price is the intended one");
-        }
 
         // We have the nft
         {
             assertEq(deployer.UNIV3_NFT_MANAGER().ownerOf(tokenId), params.sendLpTo, "We have an NFT for LPing");
         }
 
-        // Stack too Deep
-        // {
-        //     (,, address token0, address token1,, int24 tickLower, int24 tickUpper,,,,,) =
-        //         deployer.UNIV3_NFT_MANAGER().positions(tokenId);
+        // Check basic math stuff
+        {
+            UniV3Translator translator = deployer.translator();
 
-        //     assertTrue(
-        //         token0 == (address(tokenA) > address(tokenB) ? address(tokenA) : address(tokenB)), "token0 matches"
-        //     );
-        //     assertTrue(
-        //         token1 == (address(tokenA) > address(tokenB) ? address(tokenB) : address(tokenA)), "token1 matches"
-        //     );
+            uint160 expectedPrice = translator.getSqrtPriceX96GivenRatio(params.amtA, params.amtB);
+            int24 expectedMiddle = translator.getTickAtSqrtRatio(expectedPrice);
+            _checkTicks(tokenId, expectedMiddle);
+            assertEq(IUnIV3Pool(pool).slot0().sqrtPriceX96, expectedPrice, "Pool price is the intended one");
+        }
+    }
 
-        //     // Do some assertion on Ticks
-        //     assertLe(tickLower, expectedMiddle, "tick lower is less than middle");
-        //     assertGe(tickUpper, expectedMiddle, "tick upper is higher than middle");
-        // }
+    function _checkTicks(uint256 tokenId, int24 expectedMiddle) internal {
+            (,,,,,int24 tickLower, int24 tickUpper,,,,,) =
+                deployer.UNIV3_NFT_MANAGER().positions(tokenId);
+
+            assertLe(tickLower, expectedMiddle, "tick lower is less than middle");
+            assertGe(tickUpper, expectedMiddle, "tick upper is higher than middle");
     }
 }
