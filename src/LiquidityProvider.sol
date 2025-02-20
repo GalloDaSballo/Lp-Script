@@ -19,13 +19,19 @@ contract LiquidityProvider {
     // Add liquidity
     IV3NFTManager public constant UNIV3_NFT_MANAGER = IV3NFTManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
 
-    int24 internal constant MIN_TICK = -887272;
-    int24 internal constant MAX_TICK = -MIN_TICK;
-
     int24 constant TICK_SPACING = 60; // Souce: Docs | TODO
     uint24 constant DEFAULT_FEE = 3000;
 
     // NOTE / TODO: Prob need to add the rest of the above as params as well
+    // TODO: We could refactor to do this
+    // Then pass them to the 2 functions
+    struct UniV3ConfigParams {
+        address UNIV3_FACTORY;
+        address UNIV3_NFT_MANAGER;
+
+        int24 TICK_SPACING;
+        int24 DEFAULT_FEE;
+    }
 
     struct UniV3DeployParams {
         address tokenA;
@@ -65,6 +71,7 @@ contract LiquidityProvider {
         return (pool, tokenId);
     }
 
+    /// @dev Transfer tokens to to if non-zero balance
     function _sweep(address token, address to) internal {
         uint256 bal = ERC20(token).balanceOf(address(this));
         if (bal > 0) {
@@ -73,6 +80,8 @@ contract LiquidityProvider {
         }
     }
 
+    /// @dev Deploys a UniV3 Pool from the factory then provides liquidity via `_addLiquidity`
+    /// NOTE: Maintains token-amt even if the pool will change sorting
     function _createNewPoolAndSeed(
         address tokenA,
         address tokenB,
@@ -129,6 +138,8 @@ contract LiquidityProvider {
         address sendTo;
     }
 
+    /// @dev Adds liquidity in an imbalanced way
+    /// NOTE: Always works as long as the tick spacing is enabled
     function _addLiquidity(AddLiquidityParams memory addParams) internal returns (uint256) {
         // For ticks Lower we do: Tick of Price
         // For ticks Higher we do: Tick of Price
@@ -198,7 +209,9 @@ contract LiquidityProvider {
             "symbol",
             coins,
 
-            // TODO: Figure these out | TODO: Need to be told these by CURVE
+            // TODO: Figure these out 
+            // TODO: Need to be told these by CURVE
+            // NOTE: A few deployment I saw all share these except the initial price
             400000, // uint256 A,
             145000000000000, // uint256 gamma,
             26000000, // uint256 mid_fee,
@@ -209,19 +222,6 @@ contract LiquidityProvider {
             5000000000, // uint256 admin_fee,
             600, // uint256 ma_half_time,
             1e18 // uint256 initial_price | // NOTE: 1e18 Price = 1e18 on both sides, not sure how this works, but prob is just A * 1e18 / B
-        
-        /**
-        A	uint256	400000
-        gamma	uint256	145000000000000
-        mid_fee	uint256	26000000
-        out_fee	uint256	45000000
-        allowed_extra_profit	uint256	2000000000000
-        fee_gamma	uint256	230000000000000
-        adjustment_step	uint256	146000000000000
-        admin_fee	uint256	5000000000
-        ma_half_time	uint256	600
-        initial_price	uint256	2749844362125
-         */
         );
 
         // We LP via the NFT Manager
