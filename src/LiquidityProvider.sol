@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {IUniV3Factory, IV3NFTManager, IUnIV3Pool} from "./interfaces/IUni.sol";
+import {ICurveFactory, ICurvePool} from "./interfaces/ICurve.sol";
 import {UniV3Translator} from "ebtc-amm-comparer/UniV3Translator.sol";
 import {ERC20} from "./mocks/ERC20.sol";
 
@@ -172,4 +173,69 @@ contract LiquidityProvider {
 
 
     // TODO: Curve logic
+    struct CurveDeployParams {
+        address tokenA;
+        address tokenB;
+        uint256 amtA;
+        uint256 amtB;
+        address sendLpTo; // LP token will go here
+        address sweepTo; // We'll check for leftovers and send them to this
+    }
+
+    ICurveFactory CURVE_FACTORY = ICurveFactory(0xF18056Bbd320E96A48e3Fbf8bC061322531aac99);
+
+    // Factory, etc..
+    function deployAndProvideToCurve(CurveDeployParams memory params) external returns (address, uint256) {
+        // Call factory
+        // Deploy Pool
+        // Provide Liquidity
+        // Send tokens back
+
+        address[2] memory coins = [params.tokenA, params.tokenB];
+
+        address pool = CURVE_FACTORY.deploy_pool(
+            "name",
+            "symbol",
+            coins,
+
+            // TODO: Figure these out | TODO: Need to be told these by CURVE
+            400000, // uint256 A,
+            145000000000000, // uint256 gamma,
+            26000000, // uint256 mid_fee,
+            45000000, // uint256 out_fee,
+            2000000000000, // uint256 allowed_extra_profit,
+            230000000000000, // uint256 fee_gamma,
+            146000000000000, // uint256 adjustment_step,
+            5000000000, // uint256 admin_fee,
+            600, // uint256 ma_half_time,
+            1e18 // uint256 initial_price | // NOTE: 1e18 Price = 1e18 on both sides, not sure how this works, but prob is just A * 1e18 / B
+        
+        /**
+        A	uint256	400000
+        gamma	uint256	145000000000000
+        mid_fee	uint256	26000000
+        out_fee	uint256	45000000
+        allowed_extra_profit	uint256	2000000000000
+        fee_gamma	uint256	230000000000000
+        adjustment_step	uint256	146000000000000
+        admin_fee	uint256	5000000000
+        ma_half_time	uint256	600
+        initial_price	uint256	2749844362125
+         */
+        );
+
+        // We LP via the NFT Manager
+        ERC20(params.tokenA).approve(address(pool), params.amtA);
+        ERC20(params.tokenB).approve(address(pool), params.amtB);
+
+        uint256 amt = ICurvePool(pool).add_liquidity([params.amtA, params.amtB], 0); // NOTE: Slippage
+
+        _sweep(params.tokenA, params.sweepTo);
+        _sweep(params.tokenB, params.sweepTo);
+
+        ERC20(ICurvePool(pool).token()).transfer(params.sendLpTo, amt);
+
+        return (pool, amt);
+    }
+
 }
