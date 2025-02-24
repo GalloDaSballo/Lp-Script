@@ -39,16 +39,13 @@ contract LiquidityProvider {
 
     UniV3Translator public translator;
 
-
-    function deployAndProvideToUniV3(UniV3ConfigParams memory configParams, UniV3LpParams memory lpParams) external returns (address, uint256) {
-        // Input address factory, address NFT Manager
-        // AMT to pass
-        // Ticks delta to use (assumes middle)
-        // Expected slot0?
-
+    constructor() {
         // Deploy translator | NOTE: Better SWE would make this a library, but hey, it's already built
         translator = new UniV3Translator();
+    }
 
+
+    function deployAndProvideToUniV3(UniV3ConfigParams memory configParams, UniV3LpParams memory lpParams) external returns (address, uint256) {      
         (address pool, uint256 tokenId) = _createNewPoolAndSeed(
             configParams,
             lpParams
