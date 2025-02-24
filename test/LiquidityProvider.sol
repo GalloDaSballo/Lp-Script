@@ -94,6 +94,9 @@ contract LiquidityProviderTest is Test {
             assertGe(tickUpper, expectedMiddle, "tick upper is higher than middle");
     }
 
+    ICurveFactory CURVE_FACTORY = ICurveFactory(0xF18056Bbd320E96A48e3Fbf8bC061322531aac99);
+
+
     function test_deployAndCheck_curve() public {
         deployer = new LiquidityProvider();
 
@@ -106,17 +109,36 @@ contract LiquidityProviderTest is Test {
         tokenA.mint(address(deployer), 1e18);
         tokenB.mint(address(deployer), 1e18);
 
+        LiquidityProvider.CurveDeployParams memory deployParams = LiquidityProvider.CurveDeployParams({
+            CURVE_FACTORY: address(CURVE_FACTORY),
+            
+            name: "The Pool",
+            symbol: "POOL",
+
+            A: 400000, // uint256 A,
+            gamma: 145000000000000, // uint256 gamma,
+            mid_fee: 26000000, // uint256 mid_fee,
+            out_fee: 45000000, // uint256 out_fee,
+            allowed_extra_profit: 2000000000000, // uint256 allowed_extra_profit,
+            fee_gamma: 230000000000000, // uint256 fee_gamma,
+            adjustment_step: 146000000000000, // uint256 adjustment_step,
+            admin_fee: 5000000000, // uint256 admin_fee,
+            ma_half_time: 600, // uint256 ma_half_time
+            initial_price: 1e18
+        });
+
+
         // Send the tokens to the deployer
-        LiquidityProvider.CurveDeployParams memory lpParams = LiquidityProvider.CurveDeployParams({
+        LiquidityProvider.CurveLpParams memory lpParams = LiquidityProvider.CurveLpParams({
             tokenA: address(tokenA),
             tokenB: address(tokenB),
             amtA: 1e18,
             amtB: 1e18,
-            sendLpTo: address(this), // We'll sweep the rest to address | amtOfOtherTokenToLP / amtToLP IS the Price we will use
+            sendTo: address(this), // We'll sweep the rest to address | amtOfOtherTokenToLP / amtToLP IS the Price we will use
             sweepTo: address(this)
         });
 
-        (address pool, uint256 amtLp) = deployer.deployAndProvideToCurve(lpParams);
+        (address pool, uint256 amtLp) = deployer.deployAndProvideToCurve(deployParams, lpParams);
 
 
         // Verify the pool exists

@@ -163,57 +163,77 @@ contract LiquidityProvider {
     }
 
 
-    // TODO: Curve logic
     struct CurveDeployParams {
+        address CURVE_FACTORY;
+        string name;
+        string symbol;
+
+        // Coins from LpParams
+
+        uint256 A;
+        uint256 gamma;
+        uint256 mid_fee;
+        uint256 out_fee;
+        uint256 allowed_extra_profit;
+        uint256 fee_gamma;
+        uint256 adjustment_step;
+        uint256 admin_fee;
+        uint256 ma_half_time;
+        uint256 initial_price;
+    }
+
+    struct CurveLpParams {
         address tokenA;
         address tokenB;
         uint256 amtA;
         uint256 amtB;
-        address sendLpTo; // LP token will go here
+        address sendTo; // LP token will go here
         address sweepTo; // We'll check for leftovers and send them to this
     }
 
-    ICurveFactory CURVE_FACTORY = ICurveFactory(0xF18056Bbd320E96A48e3Fbf8bC061322531aac99);
+
+    function _deployCurvePool(address tokenA, address tokenB, CurveDeployParams memory deployParams) internal returns (address) {
+        address[2] memory coins = [tokenA, tokenB];
+
+        address pool = ICurveFactory(deployParams.CURVE_FACTORY).deploy_pool(
+            "name",
+            "symbol",
+            coins,
+            
+            deployParams.A, // uint256 A,
+            deployParams.gamma, // uint256 gamma,
+            deployParams.mid_fee, // uint256 mid_fee,
+            deployParams.out_fee, // uint256 out_fee,
+            deployParams.allowed_extra_profit, // uint256 allowed_extra_profit,
+            deployParams.fee_gamma, // uint256 fee_gamma,
+            deployParams.adjustment_step, // uint256 adjustment_step,
+            deployParams.admin_fee, // uint256 admin_fee,
+            deployParams.ma_half_time, // uint256 ma_half_time,
+            deployParams.initial_price // uint256 initial_price | // NOTE: 1e18 Price = 1e18 on both sides, not sure how this works, but prob is just A * 1e18 / B
+        );
+
+        return pool;
+    }
 
     // Factory, etc..
-    function deployAndProvideToCurve(CurveDeployParams memory params) external returns (address, uint256) {
+    function deployAndProvideToCurve(CurveDeployParams memory deployParams, CurveLpParams memory lpParams) external returns (address, uint256) {
         // Call factory
         // Deploy Pool
         // Provide Liquidity
         // Send tokens back
-
-        address[2] memory coins = [params.tokenA, params.tokenB];
-
-        address pool = CURVE_FACTORY.deploy_pool(
-            "name",
-            "symbol",
-            coins,
-
-            // TODO: Figure these out 
-            // TODO: Need to be told these by CURVE
-            // NOTE: A few deployment I saw all share these except the initial price
-            400000, // uint256 A,
-            145000000000000, // uint256 gamma,
-            26000000, // uint256 mid_fee,
-            45000000, // uint256 out_fee,
-            2000000000000, // uint256 allowed_extra_profit,
-            230000000000000, // uint256 fee_gamma,
-            146000000000000, // uint256 adjustment_step,
-            5000000000, // uint256 admin_fee,
-            600, // uint256 ma_half_time,
-            1e18 // uint256 initial_price | // NOTE: 1e18 Price = 1e18 on both sides, not sure how this works, but prob is just A * 1e18 / B
-        );
+        address pool = _deployCurvePool(lpParams.tokenA, lpParams.tokenB, deployParams);
+        
 
         // We LP via the NFT Manager
-        ERC20(params.tokenA).approve(address(pool), params.amtA);
-        ERC20(params.tokenB).approve(address(pool), params.amtB);
+        ERC20(lpParams.tokenA).approve(address(pool), lpParams.amtA);
+        ERC20(lpParams.tokenB).approve(address(pool), lpParams.amtB);
 
-        uint256 amt = ICurvePool(pool).add_liquidity([params.amtA, params.amtB], 0); // NOTE: Slippage
+        uint256 amt = ICurvePool(pool).add_liquidity([lpParams.amtA, lpParams.amtB], 0); // NOTE: Slippage
 
-        _sweep(params.tokenA, params.sweepTo);
-        _sweep(params.tokenB, params.sweepTo);
+        _sweep(lpParams.tokenA, lpParams.sweepTo);
+        _sweep(lpParams.tokenB, lpParams.sweepTo);
 
-        ERC20(ICurvePool(pool).token()).transfer(params.sendLpTo, amt);
+        ERC20(ICurvePool(pool).token()).transfer(lpParams.sendTo, amt);
 
         return (pool, amt);
     }
