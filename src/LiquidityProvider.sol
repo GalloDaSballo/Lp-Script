@@ -13,14 +13,7 @@ contract LiquidityProvider {
 
     // NOTE: You need to update these (or can customize the code later)
 
-    // Deploy new pool
-    IUniV3Factory public constant UNIV3_FACTORY = IUniV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
 
-    // Add liquidity
-    IV3NFTManager public constant UNIV3_NFT_MANAGER = IV3NFTManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
-
-    int24 constant TICK_SPACING = 60; // Souce: Docs | TODO
-    uint24 constant DEFAULT_FEE = 3000;
 
     // NOTE / TODO: Prob need to add the rest of the above as params as well
     // TODO: We could refactor to do this
@@ -30,23 +23,24 @@ contract LiquidityProvider {
         address UNIV3_NFT_MANAGER;
 
         int24 TICK_SPACING;
-        int24 DEFAULT_FEE;
+        uint24 DEFAULT_FEE;
     }
 
-    struct UniV3DeployParams {
+    struct UniV3LpParams {
         address tokenA;
         address tokenB;
         uint256 amtA;
         uint256 amtB;
-        address sendLpTo; // LP token will go here
+        address sendTo; // LP token will go here
         address sweepTo; // We'll check for leftovers and send them to this
-        int24 tickMultiplierA; // How many ticks to LP around?
-        int24 tickMultiplierB; // How many ticks to LP around?
+        int24 multipleTicksA; // How many ticks to LP around?
+        int24 multipleTicksB; // How many ticks to LP around?
     }
 
     UniV3Translator public translator;
 
-    function deployAndProvideToUniV3(UniV3DeployParams memory params) external returns (address, uint256) {
+
+    function deployAndProvideToUniV3(UniV3ConfigParams memory configParams, UniV3LpParams memory lpParams) external returns (address, uint256) {
         // Input address factory, address NFT Manager
         // AMT to pass
         // Ticks delta to use (assumes middle)
@@ -56,17 +50,12 @@ contract LiquidityProvider {
         translator = new UniV3Translator();
 
         (address pool, uint256 tokenId) = _createNewPoolAndSeed(
-            params.tokenA,
-            params.tokenB,
-            params.amtA,
-            params.amtB,
-            params.tickMultiplierA,
-            params.tickMultiplierB,
-            params.sendLpTo
+            configParams,
+            lpParams
         );
 
-        _sweep(params.tokenA, params.sweepTo);
-        _sweep(params.tokenB, params.sweepTo);
+        _sweep(lpParams.tokenA, lpParams.sweepTo);
+        _sweep(lpParams.tokenB, lpParams.sweepTo);
 
         return (pool, tokenId);
     }
@@ -83,27 +72,21 @@ contract LiquidityProvider {
     /// @dev Deploys a UniV3 Pool from the factory then provides liquidity via `_addLiquidity`
     /// NOTE: Maintains token-amt even if the pool will change sorting
     function _createNewPoolAndSeed(
-        address tokenA,
-        address tokenB,
-        uint256 amountA,
-        uint256 amountB,
-        int24 multipleTicksA,
-        int24 multipleTicksB,
-        address sendTo
+        UniV3ConfigParams memory configParams, UniV3LpParams memory lpParams
     ) internal returns (address newPool, uint256 tokenId) {
         // Create the Pool
-        newPool = UNIV3_FACTORY.createPool(tokenA, tokenB, DEFAULT_FEE);
+        newPool = IUniV3Factory(configParams.UNIV3_FACTORY).createPool(lpParams.tokenA, lpParams.tokenB, configParams.DEFAULT_FEE);
 
         // QA: Can do in place
         address firstToken = IUnIV3Pool(newPool).token0();
         address secondToken = IUnIV3Pool(newPool).token1();
 
-        uint256 firstAmount = firstToken == tokenA ? amountA : amountB;
-        uint256 secondAmount = secondToken == tokenA ? amountA : amountB;
+        uint256 firstAmount = firstToken == lpParams.tokenA ? lpParams.amtA : lpParams.amtB;
+        uint256 secondAmount = secondToken == lpParams.tokenA ? lpParams.amtA : lpParams.amtB;
 
         // We LP via the NFT Manager
-        ERC20(firstToken).approve(address(UNIV3_NFT_MANAGER), firstAmount);
-        ERC20(secondToken).approve(address(UNIV3_NFT_MANAGER), secondAmount);
+        ERC20(firstToken).approve(address(configParams.UNIV3_NFT_MANAGER), firstAmount);
+        ERC20(secondToken).approve(address(configParams.UNIV3_NFT_MANAGER), secondAmount);
 
         {
             uint160 priceAtRatio = translator.getSqrtRatioAtTick(0);
@@ -116,11 +99,11 @@ contract LiquidityProvider {
                 priceAtRatio: priceAtRatio,
                 firstAmount: firstAmount,
                 secondAmount: secondAmount,
-                multipleTicksA: multipleTicksA,
-                multipleTicksB: multipleTicksB,
-                sendTo: sendTo
+                multipleTicksA: lpParams.multipleTicksA,
+                multipleTicksB: lpParams.multipleTicksB,
+                sendTo: lpParams.sendTo
             });
-            tokenId = _addLiquidity(addParams);
+            tokenId = _addLiquidity(configParams, addParams);
         }
 
         return (newPool, tokenId);
@@ -140,7 +123,7 @@ contract LiquidityProvider {
 
     /// @dev Adds liquidity in an imbalanced way
     /// NOTE: Always works as long as the tick spacing is enabled
-    function _addLiquidity(AddLiquidityParams memory addParams) internal returns (uint256) {
+    function _addLiquidity(UniV3ConfigParams memory configParams, AddLiquidityParams memory addParams) internal returns (uint256) {
         // For ticks Lower we do: Tick of Price
         // For ticks Higher we do: Tick of Price
         {
@@ -154,17 +137,17 @@ contract LiquidityProvider {
             int24 tickFromPool = (IUnIV3Pool(addParams.pool).slot0()).tick;
 
             int24 tickLower = (
-                translator.getTickAtSqrtRatio(addParams.priceAtRatio) - TICK_SPACING * addParams.multipleTicksA
-            ) / TICK_SPACING * TICK_SPACING;
+                translator.getTickAtSqrtRatio(addParams.priceAtRatio) - configParams.TICK_SPACING * addParams.multipleTicksA
+            ) / configParams.TICK_SPACING * configParams.TICK_SPACING;
             int24 tickUpper = (
-                translator.getTickAtSqrtRatio(addParams.priceAtRatio) + TICK_SPACING * addParams.multipleTicksB
-            ) / TICK_SPACING * TICK_SPACING;
+                translator.getTickAtSqrtRatio(addParams.priceAtRatio) + configParams.TICK_SPACING * addParams.multipleTicksB
+            ) / configParams.TICK_SPACING * configParams.TICK_SPACING;
 
             // Mint
             IV3NFTManager.MintParams memory mintParams = IV3NFTManager.MintParams({
                 token0: address(addParams.firstToken),
                 token1: address(addParams.secondToken),
-                fee: DEFAULT_FEE,
+                fee: configParams.DEFAULT_FEE,
                 tickLower: tickLower,
                 tickUpper: tickUpper, // Not inclusive || // Does this forces to fees the other 59 ticks or not?
                 amount0Desired: addParams.firstAmount,
@@ -174,7 +157,7 @@ contract LiquidityProvider {
                 recipient: address(addParams.sendTo),
                 deadline: block.timestamp
             });
-            (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = UNIV3_NFT_MANAGER.mint(mintParams);
+            (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = IV3NFTManager(configParams.UNIV3_NFT_MANAGER).mint(mintParams);
 
             // TODO: TEST for Slippage?
 
