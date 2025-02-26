@@ -7,16 +7,7 @@ import {UniV3Translator} from "ebtc-amm-comparer/UniV3Translator.sol";
 import {ERC20} from "./mocks/ERC20.sol";
 
 contract LiquidityProvider {
-    // Addresses for UniV3
-    // Settings for LPing
-    // Do the whole thing in the constructor
 
-    // NOTE: You need to update these (or can customize the code later)
-
-
-
-    // NOTE / TODO: Prob need to add the rest of the above as params as well
-    // TODO: We could refactor to do this
     // Then pass them to the 2 functions
     struct UniV3ConfigParams {
         address UNIV3_FACTORY;
@@ -45,6 +36,11 @@ contract LiquidityProvider {
     }
 
 
+    /// @dev Given Config Params and LP Params
+    /// Create and initialize a new Pool
+    /// Then LP With the intended price
+    /// And finally return any leftovers
+    /// @notice No slippage checks are performed since we will revert if the pool was already created or initialized
     function deployAndProvideToUniV3(UniV3ConfigParams memory configParams, UniV3LpParams memory lpParams) external returns (address, uint256) {      
         (address pool, uint256 tokenId) = _createNewPoolAndSeed(
             configParams,
@@ -155,8 +151,6 @@ contract LiquidityProvider {
                 deadline: block.timestamp
             });
             (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = IV3NFTManager(configParams.UNIV3_NFT_MANAGER).mint(mintParams);
-
-            // TODO: TEST for Slippage?
 
             return tokenId;
         }
