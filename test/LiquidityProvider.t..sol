@@ -25,6 +25,7 @@ contract LiquidityProviderTest is Test {
     int24 TICK_SPACING = 60;
     uint24 DEFAULT_FEE = 3000;
 
+    // TODO: TEST and check
     function test_deployAndCheck_univ3() public {
         deployer = new LiquidityProvider();
 
@@ -83,6 +84,36 @@ contract LiquidityProviderTest is Test {
             int24 expectedMiddle = translator.getTickAtSqrtRatio(expectedPrice);
             _checkTicks(tokenId, expectedMiddle);
             assertEq(IUnIV3Pool(pool).slot0().sqrtPriceX96, expectedPrice, "Pool price is the intended one");
+        }
+
+
+
+        tokenA.mint(address(deployer), 1e18);
+        tokenB.mint(address(deployer), 1e18);
+
+        // TODO: Provide imbalanced with the new function
+        {
+            LiquidityProvider.AddLiquidityFromRatioParams memory lpParams = LiquidityProvider.AddLiquidityFromRatioParams({
+                pool: address(pool),
+                firstToken: IUnIV3Pool(pool).token0(),
+                secondToken: IUnIV3Pool(pool).token1(),
+                firstAmount: 1e18,
+                secondAmount: 1e18,
+                tokenANumeratorLow: 100,
+                tokenANumeratorHigh: 1e18,
+                tokenBDenominator: 1e18,
+                sendTo: address(this),
+                sweepTo: address(this)
+            });
+
+            uint256 id = deployer.provideToUniV3WithCustomRatios(
+                configParams,
+                lpParams
+            );
+            
+            {
+                assertEq(UNIV3_NFT_MANAGER.ownerOf(id), lpParams.sendTo, "New NFT");
+            }
         }
     }
 

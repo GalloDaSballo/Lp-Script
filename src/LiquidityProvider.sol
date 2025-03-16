@@ -50,7 +50,24 @@ contract LiquidityProvider {
         _sweep(lpParams.tokenA, lpParams.sweepTo);
         _sweep(lpParams.tokenB, lpParams.sweepTo);
 
+        // NOTE: Should reset allowances
+
         return (pool, tokenId);
+    }
+
+    function provideToUniV3WithCustomRatios(UniV3ConfigParams memory configParams, AddLiquidityFromRatioParams memory lpParams) external returns (uint256) {      
+        ERC20(lpParams.firstToken).approve(configParams.UNIV3_NFT_MANAGER, type(uint256).max);
+        ERC20(lpParams.secondToken).approve(configParams.UNIV3_NFT_MANAGER, type(uint256).max);
+
+        (uint256 tokenId) = _addLiquidityFromRatios(configParams, lpParams);
+
+        ERC20(lpParams.firstToken).approve(configParams.UNIV3_NFT_MANAGER, 0);
+        ERC20(lpParams.secondToken).approve(configParams.UNIV3_NFT_MANAGER, 0);
+
+        _sweep(lpParams.firstToken, lpParams.sweepTo);
+        _sweep(lpParams.secondToken, lpParams.sweepTo);
+
+        return (tokenId);
     }
 
     /// @dev Transfer tokens to to if non-zero balance
@@ -138,8 +155,8 @@ contract LiquidityProvider {
 
             // Mint
             IV3NFTManager.MintParams memory mintParams = IV3NFTManager.MintParams({
-                token0: address(addParams.firstToken),
-                token1: address(addParams.secondToken),
+                token0: addParams.firstToken,
+                token1: addParams.secondToken,
                 fee: configParams.DEFAULT_FEE,
                 tickLower: tickLower,
                 tickUpper: tickUpper, // Not inclusive || // Does this forces to fees the other 59 ticks or not?
@@ -147,7 +164,60 @@ contract LiquidityProvider {
                 amount1Desired: addParams.secondAmount, // NOTE: Reverse due to something I must have messed up
                 amount0Min: 0, // w/e you have?
                 amount1Min: 0, // w/e you have?
-                recipient: address(addParams.sendTo),
+                recipient: addParams.sendTo,
+                deadline: block.timestamp
+            });
+            (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = IV3NFTManager(configParams.UNIV3_NFT_MANAGER).mint(mintParams);
+
+            return tokenId;
+        }
+    }
+
+
+    struct AddLiquidityFromRatioParams {
+        address pool;
+        address firstToken;
+        address secondToken;
+        uint256 firstAmount;
+        uint256 secondAmount;
+        uint256 tokenANumeratorLow;
+        uint256 tokenANumeratorHigh;
+        uint256 tokenBDenominator;
+        address sendTo;
+        address sweepTo;
+    }
+
+    // Compute Tick upper and lower as a ratio of the two
+    function _addLiquidityFromRatios(UniV3ConfigParams memory configParams, AddLiquidityFromRatioParams memory addParams) internal returns (uint256) {
+        // For ticks Lower we do: Tick of Price
+        // For ticks Higher we do: Tick of Price
+
+        // Should be equal exclusively for 1 tick LPing, not even sure if you can do it, I think you need tick size else you get unlabeled revert
+        assert(addParams.tokenANumeratorLow < addParams.tokenANumeratorHigh); // This gives us good properties to make LPing simpler to understand and debug
+        // NOTE: This assumes amtLow
+
+        // Constant on the right e.g. 1e18
+        // Moving value on the left e.g. 9e17 to 1.1e18
+        // This ensures ordering and simplifies the code
+        // NOTE: We need to make them % tick spacing else UniV3 silently reverts
+        // NOTE: This can create a few edge cases
+        int24 tickLower = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(addParams.tokenANumeratorLow, addParams.tokenBDenominator)) / configParams.TICK_SPACING * configParams.TICK_SPACING;
+        int24 tickUpper = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(addParams.tokenANumeratorHigh, addParams.tokenBDenominator)) /  configParams.TICK_SPACING * configParams.TICK_SPACING;
+        require(tickLower < tickUpper, "Must have a delta"); // Check against edge case
+
+        {
+            // Mint
+            IV3NFTManager.MintParams memory mintParams = IV3NFTManager.MintParams({
+                token0: addParams.firstToken,
+                token1: addParams.secondToken,
+                fee: configParams.DEFAULT_FEE,
+                tickLower: tickLower,
+                tickUpper: tickUpper, // Not inclusive || // Does this forces to fees the other 59 ticks or not?
+                amount0Desired: addParams.firstAmount,
+                amount1Desired: addParams.secondAmount, // NOTE: Reverse due to something I must have messed up
+                amount0Min: 0, // w/e you have?
+                amount1Min: 0, // w/e you have?
+                recipient: addParams.sendTo,
                 deadline: block.timestamp
             });
             (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = IV3NFTManager(configParams.UNIV3_NFT_MANAGER).mint(mintParams);
