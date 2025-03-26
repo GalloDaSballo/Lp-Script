@@ -191,8 +191,8 @@ contract LiquidityProvider {
         // This ensures ordering and simplifies the code
         // NOTE: We need to make them % tick spacing else UniV3 silently reverts
         // NOTE: This can create a few edge cases
-        int24 tickLower = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(addParams.tokenANumeratorLow, addParams.tokenBDenominator)) / configParams.TICK_SPACING * configParams.TICK_SPACING;
-        int24 tickUpper = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(addParams.tokenANumeratorHigh, addParams.tokenBDenominator)) /  configParams.TICK_SPACING * configParams.TICK_SPACING;
+        int24 tickLower = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(addParams.tokenBDenominator, addParams.tokenANumeratorHigh)) / configParams.TICK_SPACING * configParams.TICK_SPACING;
+        int24 tickUpper = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(addParams.tokenBDenominator, addParams.tokenANumeratorLow)) /  configParams.TICK_SPACING * configParams.TICK_SPACING;
         require(tickLower < tickUpper, "Must have a delta"); // Check against edge case
 
         {

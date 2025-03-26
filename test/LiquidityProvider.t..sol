@@ -88,6 +88,9 @@ contract LiquidityProviderTest is Test {
         }
 
 
+        // TODO: Try to LP in an imbalanced way
+        // Verify that it will work as intended, very important!
+
 
         tokenA.mint(address(deployer), 1e18);
         tokenB.mint(address(deployer), 1e18);
