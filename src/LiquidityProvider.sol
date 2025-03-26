@@ -100,7 +100,7 @@ contract LiquidityProvider {
         uint256 expectedFirstAmount = firstToken == lpParams.tokenA ? lpParams.expectedAmtA : lpParams.expectedAmtB;
         uint256 expectedSecondAmount = secondToken == lpParams.tokenA ? lpParams.expectedAmtA : lpParams.expectedAmtB;
 
-        // We LP via the NFT Manager
+        // We LP via the NFT Manager | Approve is safe because we use known OZ tokens
         ERC20(firstToken).approve(address(configParams.UNIV3_NFT_MANAGER), firstAmount);
         ERC20(secondToken).approve(address(configParams.UNIV3_NFT_MANAGER), secondAmount);
 
@@ -166,7 +166,7 @@ contract LiquidityProvider {
                 recipient: addParams.sendTo,
                 deadline: block.timestamp
             });
-            (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = IV3NFTManager(configParams.UNIV3_NFT_MANAGER).mint(mintParams);
+            (uint256 tokenId, , , ) = IV3NFTManager(configParams.UNIV3_NFT_MANAGER).mint(mintParams);
 
             return tokenId;
         }
@@ -220,7 +220,7 @@ contract LiquidityProvider {
                 recipient: addParams.sendTo,
                 deadline: block.timestamp
             });
-            (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = IV3NFTManager(configParams.UNIV3_NFT_MANAGER).mint(mintParams);
+            (uint256 tokenId, , , ) = IV3NFTManager(configParams.UNIV3_NFT_MANAGER).mint(mintParams);
 
             return tokenId;
         }

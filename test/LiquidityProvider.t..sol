@@ -98,7 +98,7 @@ contract LiquidityProviderTest is Test {
         tokenB.mint(address(deployer), 1e18);
 
         {
-            LiquidityProvider.AddLiquidityFromRatioParams memory lpParams = LiquidityProvider.AddLiquidityFromRatioParams({
+            LiquidityProvider.AddLiquidityFromRatioParams memory lpParams2 = LiquidityProvider.AddLiquidityFromRatioParams({
                 pool: address(pool),
                 firstToken: IUnIV3Pool(pool).token0(),
                 secondToken: IUnIV3Pool(pool).token1(),
@@ -116,16 +116,16 @@ contract LiquidityProviderTest is Test {
 
             uint256 id = deployer.provideToUniV3WithCustomRatios(
                 configParams,
-                lpParams
+                lpParams2
             );
             
             {
-                assertEq(UNIV3_NFT_MANAGER.ownerOf(id), lpParams.sendTo, "New NFT");
+                assertEq(UNIV3_NFT_MANAGER.ownerOf(id), lpParams2.sendTo, "New NFT");
             }
         }
     }
 
-    function _checkTicks(uint256 tokenId, int24 expectedMiddle) internal {
+    function _checkTicks(uint256 tokenId, int24 expectedMiddle) internal view {
             (,,,,,int24 tickLower, int24 tickUpper,,,,,) =
                 UNIV3_NFT_MANAGER.positions(tokenId);
 
@@ -177,7 +177,7 @@ contract LiquidityProviderTest is Test {
             sweepTo: address(this)
         });
 
-        (address pool, uint256 amtLp) = deployer.deployAndProvideToCurve(deployParams, lpParams);
+        (address pool, ) = deployer.deployAndProvideToCurve(deployParams, lpParams);
 
 
         // Verify the pool exists
