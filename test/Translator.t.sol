@@ -57,5 +57,22 @@ contract Translator is Test {
         assertGe(tickHigh, tickLow, "Ticks go from Low A to High B, to High A and Low B");
     }
 
+    
+    // forge test --match-test test_tick_rational -vv
+    function test_tick_rational() public {
+        uint64 amtLow = 1e18;
+        uint64 amtHigh = 2e18;
+
+        uint64 amtB = 1e18;
+        deployer = new LiquidityProvider();
+        UniV3Translator translator = deployer.translator();
+
+        int24 tickLow = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(amtB, amtHigh));
+        int24 tickHigh = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(amtB, amtLow));
+
+       console2.log("tickLow", tickLow);
+       console2.log("tickHigh", tickHigh);
+    }
+
    
 }
