@@ -52,6 +52,8 @@ contract LiquidityProviderTest is Test {
             tokenB: address(tokenB),
             amtA: 1e18,
             amtB: 1e18,
+            expectedAmtA: 1e18,
+            expectedAmtB: 1e18,
             sendTo: address(this), // We'll sweep the rest to address | amtOfOtherTokenToLP / amtToLP IS the Price we will use
             sweepTo: address(this),
             tickToInitializeAt: int24(0), // 1e18 | 1e18
@@ -94,7 +96,7 @@ contract LiquidityProviderTest is Test {
 
         tokenA.mint(address(deployer), 1e18);
         tokenB.mint(address(deployer), 1e18);
-        
+
         {
             LiquidityProvider.AddLiquidityFromRatioParams memory lpParams = LiquidityProvider.AddLiquidityFromRatioParams({
                 pool: address(pool),
@@ -102,6 +104,9 @@ contract LiquidityProviderTest is Test {
                 secondToken: IUnIV3Pool(pool).token1(),
                 firstAmount: 1e18,
                 secondAmount: 1e18,
+                // NOTE: Slippage! I believe it should consume 100% of B but not all of A
+                expectedFirstAmount: 0,
+                expectedSecondAmount: 0,
                 tokenANumeratorLow: 100,
                 tokenANumeratorHigh: 1e18,
                 tokenBDenominator: 1e18,

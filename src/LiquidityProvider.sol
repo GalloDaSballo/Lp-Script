@@ -22,6 +22,8 @@ contract LiquidityProvider {
         address tokenB;
         uint256 amtA;
         uint256 amtB;
+        uint256 expectedAmtA;
+        uint256 expectedAmtB;
         address sendTo; // LP token will go here
         address sweepTo; // We'll check for leftovers and send them to this
         int24 tickToInitializeAt;
@@ -95,6 +97,9 @@ contract LiquidityProvider {
         uint256 firstAmount = firstToken == lpParams.tokenA ? lpParams.amtA : lpParams.amtB;
         uint256 secondAmount = secondToken == lpParams.tokenA ? lpParams.amtA : lpParams.amtB;
 
+        uint256 expectedFirstAmount = firstToken == lpParams.tokenA ? lpParams.expectedAmtA : lpParams.expectedAmtB;
+        uint256 expectedSecondAmount = secondToken == lpParams.tokenA ? lpParams.expectedAmtA : lpParams.expectedAmtB;
+
         // We LP via the NFT Manager
         ERC20(firstToken).approve(address(configParams.UNIV3_NFT_MANAGER), firstAmount);
         ERC20(secondToken).approve(address(configParams.UNIV3_NFT_MANAGER), secondAmount);
@@ -110,6 +115,8 @@ contract LiquidityProvider {
                 priceAtRatio: priceAtRatio,
                 firstAmount: firstAmount,
                 secondAmount: secondAmount,
+                expectedFirstAmount: expectedFirstAmount,
+                expectedSecondAmount: expectedSecondAmount,
                 multipleTicksA: lpParams.multipleTicksA,
                 multipleTicksB: lpParams.multipleTicksB,
                 sendTo: lpParams.sendTo
@@ -127,6 +134,8 @@ contract LiquidityProvider {
         uint160 priceAtRatio;
         uint256 firstAmount;
         uint256 secondAmount;
+        uint256 expectedFirstAmount;
+        uint256 expectedSecondAmount;
         int24 multipleTicksA;
         int24 multipleTicksB;
         address sendTo;
@@ -149,11 +158,11 @@ contract LiquidityProvider {
                 token1: addParams.secondToken,
                 fee: configParams.DEFAULT_FEE,
                 tickLower: tickLower,
-                tickUpper: tickUpper, // Not inclusive || // Does this forces to fees the other 59 ticks or not?
+                tickUpper: tickUpper, // Not inclusive
                 amount0Desired: addParams.firstAmount,
-                amount1Desired: addParams.secondAmount, // NOTE: Reverse due to something I must have messed up
-                amount0Min: 0, // w/e you have?
-                amount1Min: 0, // w/e you have?
+                amount1Desired: addParams.secondAmount,
+                amount0Min: addParams.expectedFirstAmount, // w/e you have?
+                amount1Min: addParams.expectedSecondAmount, // w/e you have?
                 recipient: addParams.sendTo,
                 deadline: block.timestamp
             });
@@ -170,6 +179,8 @@ contract LiquidityProvider {
         address secondToken;
         uint256 firstAmount;
         uint256 secondAmount;
+        uint256 expectedFirstAmount;
+        uint256 expectedSecondAmount;
         uint256 tokenANumeratorLow;
         uint256 tokenANumeratorHigh;
         uint256 tokenBDenominator;
@@ -201,11 +212,11 @@ contract LiquidityProvider {
                 token1: addParams.secondToken,
                 fee: configParams.DEFAULT_FEE,
                 tickLower: tickLower,
-                tickUpper: tickUpper, // Not inclusive || // Does this forces to fees the other 59 ticks or not?
+                tickUpper: tickUpper, // Not inclusive
                 amount0Desired: addParams.firstAmount,
-                amount1Desired: addParams.secondAmount, // NOTE: Reverse due to something I must have messed up
-                amount0Min: 0, // w/e you have?
-                amount1Min: 0, // w/e you have?
+                amount1Desired: addParams.secondAmount,
+                amount0Min: addParams.expectedFirstAmount,
+                amount1Min: addParams.expectedSecondAmount,
                 recipient: addParams.sendTo,
                 deadline: block.timestamp
             });
