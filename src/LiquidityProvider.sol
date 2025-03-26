@@ -24,6 +24,7 @@ contract LiquidityProvider {
         uint256 amtB;
         address sendTo; // LP token will go here
         address sweepTo; // We'll check for leftovers and send them to this
+        int24 tickToInitializeAt;
         int24 multipleTicksA; // How many ticks to LP around?
         int24 multipleTicksB; // How many ticks to LP around?
     }
@@ -99,7 +100,7 @@ contract LiquidityProvider {
         ERC20(secondToken).approve(address(configParams.UNIV3_NFT_MANAGER), secondAmount);
 
         {
-            uint160 priceAtRatio = translator.getSqrtRatioAtTick(0);
+            uint160 priceAtRatio = translator.getSqrtRatioAtTick(lpParams.tickToInitializeAt);
             IUnIV3Pool(newPool).initialize(priceAtRatio);
 
             AddLiquidityParams memory addParams = AddLiquidityParams({
@@ -134,18 +135,7 @@ contract LiquidityProvider {
     /// @dev Adds liquidity in an imbalanced way
     /// NOTE: Always works as long as the tick spacing is enabled
     function _addLiquidity(UniV3ConfigParams memory configParams, AddLiquidityParams memory addParams) internal returns (uint256) {
-        // For ticks Lower we do: Tick of Price
-        // For ticks Higher we do: Tick of Price
         {
-            int24 targetTick = translator.getTickAtSqrtRatio(addParams.priceAtRatio);
-
-            int24 tickFromPool = (IUnIV3Pool(addParams.pool).slot0()).tick;
-            bool unlocked = (IUnIV3Pool(addParams.pool).slot0()).unlocked;
-        }
-
-        {
-            int24 tickFromPool = (IUnIV3Pool(addParams.pool).slot0()).tick;
-
             int24 tickLower = (
                 translator.getTickAtSqrtRatio(addParams.priceAtRatio) - configParams.TICK_SPACING * addParams.multipleTicksA
             ) / configParams.TICK_SPACING * configParams.TICK_SPACING;

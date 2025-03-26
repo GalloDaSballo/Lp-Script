@@ -54,6 +54,7 @@ contract LiquidityProviderTest is Test {
             amtB: 1e18,
             sendTo: address(this), // We'll sweep the rest to address | amtOfOtherTokenToLP / amtToLP IS the Price we will use
             sweepTo: address(this),
+            tickToInitializeAt: int24(0), // 1e18 | 1e18
             multipleTicksA: int24(100), // How many ticks to LP around?
             multipleTicksB: int24(100) // How many ticks to LP around?
         });
