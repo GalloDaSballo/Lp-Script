@@ -104,10 +104,10 @@ contract LiquidityProviderTest is Test {
                 secondToken: IUnIV3Pool(pool).token1(),
                 firstAmount: 1e18,
                 secondAmount: 1e18,
-                // NOTE: Slippage! I believe it should consume 100% of B but not all of A
-                expectedFirstAmount: 0,
+                // By using [1, 1e18]: 1e18 we basically want to put 100% of token0 and w/e we can of tokenA
+                expectedFirstAmount: 1e18,
                 expectedSecondAmount: 0,
-                tokenANumeratorLow: 100,
+                tokenANumeratorLow: 1,
                 tokenANumeratorHigh: 1e18,
                 tokenBDenominator: 1e18,
                 sendTo: address(this),
