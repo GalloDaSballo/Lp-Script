@@ -25,6 +25,7 @@ contract LiquidityProviderTest is Test {
     int24 TICK_SPACING = 60;
     uint24 DEFAULT_FEE = 3000;
 
+
     // TODO: TEST and check
     function test_deployAndCheck_univ3() public {
         deployer = new LiquidityProvider();
@@ -131,6 +132,112 @@ contract LiquidityProviderTest is Test {
 
             assertLe(tickLower, expectedMiddle, "tick lower is less than middle");
             assertGe(tickUpper, expectedMiddle, "tick upper is higher than middle");
+    }
+
+
+    /// TODO: Set up test with realistic numbers
+    /**
+
+        400_000e18
+        1e18
+        300_000e18 - 1e18
+
+        Write test that does that
+
+
+        Example to deploy only on one side
+     */
+    
+    function test_uniV3_realistic() public {
+        // A test similar to the one above but with values that are closer to realistic
+        deployer = new LiquidityProvider();
+
+        ERC20 tokenA = new ERC20("Corn", "CORN");
+        ERC20 tokenB = new ERC20("Bitcorn", "BTCN");
+
+        uint256 bitcornAmount = 5.76e18; // 500k in USD
+        uint256 cornAmount = bitcornAmount * 400_000; // 400_000k times the Bitcorn
+    
+        tokenA.mint(address(deployer), cornAmount);
+        tokenB.mint(address(deployer), bitcornAmount);
+
+        UniV3Translator translator = deployer.translator();
+
+        // 30 BPS pool, tick spacing from governance
+        LiquidityProvider.UniV3ConfigParams memory configParams = LiquidityProvider.UniV3ConfigParams({
+            UNIV3_FACTORY: address(UNIV3_FACTORY),
+            UNIV3_NFT_MANAGER: address(UNIV3_NFT_MANAGER),
+
+            TICK_SPACING: 60,
+            DEFAULT_FEE: 3000
+        });
+
+        // Send the tokens to the deployer
+        LiquidityProvider.UniV3LpParams memory lpParams = LiquidityProvider.UniV3LpParams({
+            tokenA: address(tokenA),
+            tokenB: address(tokenB),
+            amtA: cornAmount,
+            amtB: bitcornAmount,
+            // We expect to use basically all tokens
+            expectedAmtA: cornAmount * 98 / 100,
+            expectedAmtB: bitcornAmount * 98 / 100,
+            sendTo: address(this), // We'll sweep the rest to address | amtOfOtherTokenToLP / amtToLP IS the Price we will use
+            sweepTo: address(this),
+            tickToInitializeAt: translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(bitcornAmount, cornAmount)), // 1e18 | 1e18 // TODO: What's the tick then?
+            // 1.001 ^ 1500 == 1.1618255296 // We're moving 16% above and below to offer a big range of liquidity
+            multipleTicksA: int24(1500), // How many ticks to LP around?
+            multipleTicksB: int24(1500) // How many ticks to LP around?
+        });
+
+        (address pool, uint256 tokenId) = deployer.deployAndProvideToUniV3(configParams, lpParams);
+
+        // TEST:
+        // TODO: Prove tick makes sense and log it so we can test on mainnet
+        {   
+            // Pool has expected price
+            assertTrue(IUnIV3Pool(pool).slot0().sqrtPriceX96 != 0, "Pool is initialized");
+            // We have the nft
+            assertEq(UNIV3_NFT_MANAGER.ownerOf(tokenId), lpParams.sendTo, "We have an NFT for LPing");
+        }
+
+        /// Imabalanced LP provision "defende the price"
+        /// We have LPd at the right price (15% around 1e18 | 400_000e18)
+        // let's LP to defend at 500k | 1e18 
+
+
+        /// Another $500k
+        tokenB.mint(address(deployer), bitcornAmount);
+        assertTrue(IUnIV3Pool(pool).token1() == address(tokenB), "BTCN is 1");
+
+        {
+            LiquidityProvider.AddLiquidityFromRatioParams memory lpParams2 = LiquidityProvider.AddLiquidityFromRatioParams({
+                pool: address(pool),
+                firstToken: IUnIV3Pool(pool).token0(),
+                secondToken: IUnIV3Pool(pool).token1(),
+                firstAmount: 0,
+                secondAmount: bitcornAmount,
+
+                expectedFirstAmount: 0,
+                expectedSecondAmount: bitcornAmount,
+                // Current Price is 400_000e18
+                tokenANumeratorLow: 500_000e18,
+                tokenANumeratorHigh: 600_000e18, 
+                tokenBDenominator: 1e18,
+                sendTo: address(this),
+                sweepTo: address(this)
+            });
+
+            uint256 id = deployer.provideToUniV3WithCustomRatios(
+                configParams,
+                lpParams2
+            );
+            
+            {
+                assertEq(UNIV3_NFT_MANAGER.ownerOf(id), lpParams2.sendTo, "New NFT");
+            }
+        }
+
+
     }
 
     ICurveFactory CURVE_FACTORY = ICurveFactory(0xF18056Bbd320E96A48e3Fbf8bC061322531aac99);
