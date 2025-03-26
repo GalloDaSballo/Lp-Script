@@ -184,7 +184,6 @@ contract LiquidityProvider {
 
         // Should be equal exclusively for 1 tick LPing, not even sure if you can do it, I think you need tick size else you get unlabeled revert
         assert(addParams.tokenANumeratorLow < addParams.tokenANumeratorHigh); // This gives us good properties to make LPing simpler to understand and debug
-        // NOTE: This assumes amtLow
 
         // Constant on the right e.g. 1e18
         // Moving value on the left e.g. 9e17 to 1.1e18
