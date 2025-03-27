@@ -81,14 +81,19 @@ contract Translator is Test {
         deployer = new LiquidityProvider();
         UniV3Translator translator = deployer.translator();
     
+        /// BTCN is B
+        /// CORN is A
+        /// 400k Corn to BTCN
+        /// Is 1 numerator and 400_000 divisor
+
         // Initial Tick
         int24 initialTick = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(
-            400_000, 1));
+            1, 400_000));
         console2.log("initialTick", initialTick);
 
-        //600_000 | 500_000, since it's token 0 it's lower when higher
-        int24 tickLow = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(500_000, 1));
-        int24 tickHigh = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(600_000, 1));
+        // Similar logic here
+        int24 tickLow = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(1, 500_000));
+        int24 tickHigh = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(1, 600_000));
 
         console2.log("tickLow", tickLow);
         console2.log("tickHigh", tickHigh);
