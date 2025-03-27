@@ -185,8 +185,8 @@ contract LiquidityProviderTest is Test {
             amtB: bitcornAmount,
             // We expect to use basically all tokens
             // TODO: Figure this out better | We use 100% of BTCN but not all of Corn cause of how it's skewed
-            expectedAmtA: 0,
-            expectedAmtB: 0,
+            expectedAmtA: cornAmount * 90 / 100,
+            expectedAmtB: bitcornAmount * 90 / 100,
             sendTo: address(this), // We'll sweep the rest to address | amtOfOtherTokenToLP / amtToLP IS the Price we will use
             sweepTo: address(this),
             tickToInitializeAt: translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(1, ratioCorn)),
