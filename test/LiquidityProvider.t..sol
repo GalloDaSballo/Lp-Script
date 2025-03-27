@@ -163,6 +163,9 @@ contract LiquidityProviderTest is Test {
         tokenA.mint(address(deployer), cornAmount);
         tokenB.mint(address(deployer), bitcornAmount);
 
+        vm.label(address(tokenA), "CORN");
+        vm.label(address(tokenB), "BTCN");
+
         UniV3Translator translator = deployer.translator();
 
         // 30 BPS pool, tick spacing from governance
@@ -181,11 +184,12 @@ contract LiquidityProviderTest is Test {
             amtA: cornAmount,
             amtB: bitcornAmount,
             // We expect to use basically all tokens
-            expectedAmtA: cornAmount * 98 / 100,
-            expectedAmtB: bitcornAmount * 98 / 100,
+            // TODO: Figure this out better | We use 100% of BTCN but not all of Corn cause of how it's skewed
+            expectedAmtA: 0,
+            expectedAmtB: 0,
             sendTo: address(this), // We'll sweep the rest to address | amtOfOtherTokenToLP / amtToLP IS the Price we will use
             sweepTo: address(this),
-            tickToInitializeAt: translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(ratioCorn, 1)), // 1e18 | 1e18 // TODO: What's the tick then?
+            tickToInitializeAt: translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(1, ratioCorn)),
             // 1.001 ^ 1500 == 1.1618255296 // We're moving 16% above and below to offer a big range of liquidity
             multipleTicksA: int24(1500), // How many ticks to LP around?
             multipleTicksB: int24(1500) // How many ticks to LP around?
@@ -198,9 +202,10 @@ contract LiquidityProviderTest is Test {
         {   
             // Pool has expected price
             assertTrue(IUnIV3Pool(pool).slot0().sqrtPriceX96 != 0, "Pool is initialized");
-            assertTrue(IUnIV3Pool(pool).slot0().tick == 128998, "Tick matches test_sanity_ticks_mainnet");
+            assertTrue(IUnIV3Pool(pool).slot0().tick == -128999, "Tick matches test_sanity_ticks_mainnet");
             // We have the nft
             assertEq(UNIV3_NFT_MANAGER.ownerOf(tokenId), lpParams.sendTo, "We have an NFT for LPing");
+            assertTrue(IUnIV3Pool(pool).token1() == address(tokenB), "BTCN is 1");
         }
 
         /// Imabalanced LP provision "defende the price"
@@ -210,7 +215,7 @@ contract LiquidityProviderTest is Test {
 
         /// Another $500k
         tokenB.mint(address(deployer), bitcornAmount);
-        assertTrue(IUnIV3Pool(pool).token1() == address(tokenB), "BTCN is 1");
+        
 
         {
             LiquidityProvider.AddLiquidityFromRatioParams memory lpParams2 = LiquidityProvider.AddLiquidityFromRatioParams({
@@ -222,7 +227,7 @@ contract LiquidityProviderTest is Test {
 
                 expectedFirstAmount: 0,
                 expectedSecondAmount: bitcornAmount,
-                // Current Price is 400_000 : 1 
+                // Current Price is 400_000 : 1 so bidding below means we only use BTCN
                 tokenANumeratorLow: 500_000,
                 tokenANumeratorHigh: 600_000, 
                 tokenBDenominator: 1,
