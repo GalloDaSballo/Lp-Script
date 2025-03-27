@@ -190,9 +190,10 @@ contract LiquidityProviderTest is Test {
             sendTo: address(this), // We'll sweep the rest to address | amtOfOtherTokenToLP / amtToLP IS the Price we will use
             sweepTo: address(this),
             tickToInitializeAt: translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(1, ratioCorn)),
-            // 1.001 ^ 1500 == 1.1618255296 // We're moving 16% above and below to offer a big range of liquidity
-            multipleTicksA: int24(1500), // How many ticks to LP around?
-            multipleTicksB: int24(1500) // How many ticks to LP around?
+            // 1.001 ^ 250 == 1.2838650305 // We're moving 28% above and below to offer a big range of liquidity
+            // We divide by Tick Spacing cause that's how the script works
+            multipleTicksA: int24(250 / 60), // How many ticks to LP around?
+            multipleTicksB: int24(250 / 60) // How many ticks to LP around?
         });
 
         (address pool, uint256 tokenId) = deployer.deployAndProvideToUniV3(configParams, lpParams);
@@ -228,7 +229,7 @@ contract LiquidityProviderTest is Test {
                 expectedFirstAmount: 0,
                 expectedSecondAmount: bitcornAmount,
                 // Current Price is 400_000 : 1 so bidding below means we only use BTCN
-                tokenANumeratorLow: 500_000,
+                tokenANumeratorLow: 400_060, // Tick after
                 tokenANumeratorHigh: 600_000, 
                 tokenBDenominator: 1,
                 sendTo: address(this),
