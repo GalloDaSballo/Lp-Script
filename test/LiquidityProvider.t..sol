@@ -185,15 +185,15 @@ contract LiquidityProviderTest is Test {
             amtB: bitcornAmount,
             // We expect to use basically all tokens
             // TODO: Figure this out better | We use 100% of BTCN but not all of Corn cause of how it's skewed
-            expectedAmtA: cornAmount * 90 / 100,
-            expectedAmtB: bitcornAmount * 90 / 100,
+            expectedAmtA: cornAmount * 50 / 100,
+            expectedAmtB: bitcornAmount * 50 / 100,
             sendTo: address(this), // We'll sweep the rest to address | amtOfOtherTokenToLP / amtToLP IS the Price we will use
             sweepTo: address(this),
             tickToInitializeAt: translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(1, ratioCorn)),
             // 1.001 ^ 250 == 1.2838650305 // We're moving 28% above and below to offer a big range of liquidity
             // We divide by Tick Spacing cause that's how the script works
-            multipleTicksA: int24(250 / 60), // How many ticks to LP around?
-            multipleTicksB: int24(250 / 60) // How many ticks to LP around?
+            multipleTicksA: int24(int24(250) / 60), // How many ticks to LP around?
+            multipleTicksB: int24(int24(250) / 60) // How many ticks to LP around?
         });
 
         (address pool, uint256 tokenId) = deployer.deployAndProvideToUniV3(configParams, lpParams);
