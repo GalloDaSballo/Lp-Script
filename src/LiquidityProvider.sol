@@ -181,9 +181,9 @@ contract LiquidityProvider {
         uint256 secondAmount;
         uint256 expectedFirstAmount;
         uint256 expectedSecondAmount;
-        uint256 tokenANumeratorLow;
-        uint256 tokenANumeratorHigh;
-        uint256 tokenBDenominator;
+        uint64 tokenANumeratorLow;
+        uint64 tokenANumeratorHigh;
+        uint64 tokenBDenominator;
         address sendTo;
         address sweepTo;
     }

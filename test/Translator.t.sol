@@ -11,6 +11,7 @@ import {ERC20} from "../src/mocks/ERC20.sol";
 
 import {UniV3Translator} from "ebtc-amm-comparer/UniV3Translator.sol";
 
+
 contract Translator is Test {
     LiquidityProvider deployer;
 
@@ -25,8 +26,8 @@ contract Translator is Test {
         // Assert a couple of properties so LPing is feasible
         // low A, high B = low tick
         // high A, low B = high tick
-        int24 tickLow = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(100, 1_000_000e18));
-        int24 tickHigh = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(1_000_000e18, 100));
+        int24 tickLow = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(100, 1e18));
+        int24 tickHigh = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(1e18, 100));
 
         console2.log("tickLow", tickLow);
         console2.log("tickHigh", tickHigh);
@@ -72,6 +73,25 @@ contract Translator is Test {
 
        console2.log("tickLow", tickLow);
        console2.log("tickHigh", tickHigh);
+    }
+
+
+    // NOTE: Adapt the ratios and prices to figure out the ticks you want to use
+    function test_sanity_ticks_mainnet() public {
+        deployer = new LiquidityProvider();
+        UniV3Translator translator = deployer.translator();
+    
+        // Initial Tick
+        int24 initialTick = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(
+            400_000, 1));
+        console2.log("initialTick", initialTick);
+
+        //600_000 | 500_000, since it's token 0 it's lower when higher
+        int24 tickLow = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(500_000, 1));
+        int24 tickHigh = translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(600_000, 1));
+
+        console2.log("tickLow", tickLow);
+        console2.log("tickHigh", tickHigh);
     }
 
    

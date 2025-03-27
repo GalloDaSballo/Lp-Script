@@ -84,7 +84,7 @@ contract LiquidityProviderTest is Test {
         {
             UniV3Translator translator = deployer.translator();
 
-            uint160 expectedPrice = translator.getSqrtPriceX96GivenRatio(lpParams.amtA, lpParams.amtB);
+            uint160 expectedPrice = translator.getSqrtPriceX96GivenRatio(1e18, 1e18);
             int24 expectedMiddle = translator.getTickAtSqrtRatio(expectedPrice);
             _checkTicks(tokenId, expectedMiddle);
             assertEq(IUnIV3Pool(pool).slot0().sqrtPriceX96, expectedPrice, "Pool price is the intended one");
@@ -155,8 +155,10 @@ contract LiquidityProviderTest is Test {
         ERC20 tokenA = new ERC20("Corn", "CORN");
         ERC20 tokenB = new ERC20("Bitcorn", "BTCN");
 
+        uint64 ratioCorn = 400_000;
+
         uint256 bitcornAmount = 5.76e18; // 500k in USD
-        uint256 cornAmount = bitcornAmount * 400_000; // 400_000k times the Bitcorn
+        uint256 cornAmount = bitcornAmount * ratioCorn; // 400_000k times the Bitcorn
     
         tokenA.mint(address(deployer), cornAmount);
         tokenB.mint(address(deployer), bitcornAmount);
@@ -183,7 +185,7 @@ contract LiquidityProviderTest is Test {
             expectedAmtB: bitcornAmount * 98 / 100,
             sendTo: address(this), // We'll sweep the rest to address | amtOfOtherTokenToLP / amtToLP IS the Price we will use
             sweepTo: address(this),
-            tickToInitializeAt: translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(bitcornAmount, cornAmount)), // 1e18 | 1e18 // TODO: What's the tick then?
+            tickToInitializeAt: translator.getTickAtSqrtRatio(translator.getSqrtPriceX96GivenRatio(ratioCorn, 1)), // 1e18 | 1e18 // TODO: What's the tick then?
             // 1.001 ^ 1500 == 1.1618255296 // We're moving 16% above and below to offer a big range of liquidity
             multipleTicksA: int24(1500), // How many ticks to LP around?
             multipleTicksB: int24(1500) // How many ticks to LP around?
@@ -196,6 +198,7 @@ contract LiquidityProviderTest is Test {
         {   
             // Pool has expected price
             assertTrue(IUnIV3Pool(pool).slot0().sqrtPriceX96 != 0, "Pool is initialized");
+            assertTrue(IUnIV3Pool(pool).slot0().tick == 128998, "Tick matches test_sanity_ticks_mainnet");
             // We have the nft
             assertEq(UNIV3_NFT_MANAGER.ownerOf(tokenId), lpParams.sendTo, "We have an NFT for LPing");
         }
@@ -219,10 +222,10 @@ contract LiquidityProviderTest is Test {
 
                 expectedFirstAmount: 0,
                 expectedSecondAmount: bitcornAmount,
-                // Current Price is 400_000e18
-                tokenANumeratorLow: 500_000e18,
-                tokenANumeratorHigh: 600_000e18, 
-                tokenBDenominator: 1e18,
+                // Current Price is 400_000 : 1 
+                tokenANumeratorLow: 500_000,
+                tokenANumeratorHigh: 600_000, 
+                tokenBDenominator: 1,
                 sendTo: address(this),
                 sweepTo: address(this)
             });
@@ -234,6 +237,8 @@ contract LiquidityProviderTest is Test {
             
             {
                 assertEq(UNIV3_NFT_MANAGER.ownerOf(id), lpParams2.sendTo, "New NFT");
+
+                // TODO: Assert ticks upper and lower for the position
             }
         }
 
